@@ -1,0 +1,89 @@
+#version 450
+
+#define WORKGROUP_SIZE 256 
+shared vec4 sharedPosMass[WORKGROUP_SIZE];
+
+// Define the number of threads per workgroup (e.g., 256 particles per group)
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+// A Push Constant is perfect for global, frequently changing variables like dt
+layout(push_constant) uniform PushConstants {
+    float deltaTime;
+    uint numParticles;
+} push;
+
+struct Particle {
+    vec4 position_mass; 
+    vec4 velocity;      
+};
+
+// Binding 0: Read from Frame n
+layout(std430, binding = 0) readonly buffer ParticlesIn {
+    Particle particlesIn[];
+};
+
+// Binding 1: Write to Frame n+1
+layout(std430, binding = 1) buffer ParticlesOut {
+    Particle particlesOut[];
+};
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    uint numTiles = (push.numParticles + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
+
+    vec3 pos = vec3(0.0);
+    vec3 vel = vec3(0.0);
+    float mass = 0.0;
+    
+    // Only read from global memory if we are a valid particle
+    if (i < push.numParticles) {
+        vec4 p_mass = particlesIn[i].position_mass;
+        pos = p_mass.xyz;
+        mass = p_mass.w;
+        vel = particlesIn[i].velocity.xyz;
+    }
+    
+    vec3 accel = vec3(0.0);
+    float G = 1.0;          
+    float ep2 = 1e-5;       
+
+    // 2. The Outer Tile Loop
+    for(uint tile = 0; tile < numTiles; tile++) {
+        uint globalIdx = tile * WORKGROUP_SIZE + gl_LocalInvocationID.x;
+
+        // Cooperative Load
+        if (globalIdx < push.numParticles) {
+            sharedPosMass[gl_LocalInvocationID.x] = particlesIn[globalIdx].position_mass;
+        } else {
+            sharedPosMass[gl_LocalInvocationID.x] = vec4(0.0); 
+        }
+
+        // Synchronization 1: Wait for all 256 threads to load their data
+        barrier();
+
+        for(uint j = 0; j < WORKGROUP_SIZE; j++) {
+            vec4 p2_mass = sharedPosMass[j];
+            vec3 dist = p2_mass.xyz - pos;
+            
+            float distSqr = dot(dist, dist) + ep2;
+            float invDist = inversesqrt(distSqr); 
+            float invDistCube = invDist * invDist * invDist;
+            
+            accel += p2_mass.w * dist * invDistCube;
+        }
+
+        // Synchronization 2: Wait for math to finish BEFORE the next tile overwrites shared memory
+        barrier();
+    }
+    
+    // Only valid particles are allowed to update and write to memory
+    if (i < push.numParticles) {
+        accel *= G;
+
+        vel += accel * push.deltaTime;
+        pos += vel * push.deltaTime;
+        
+        particlesOut[i].velocity = vec4(vel, 0.0);
+        particlesOut[i].position_mass = vec4(pos, mass);
+    }
+}
