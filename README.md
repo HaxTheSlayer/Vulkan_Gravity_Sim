@@ -23,7 +23,7 @@ $$\mathbf{r}_i(t+\Delta t)=\mathbf{r}_i(t)+\mathbf{v}_i(t+\Delta t)\Delta t$$
 
 ## Real-Time Interactive Demo
 
-<video src="[media/grav_sim.mp4](https://github.com/user-attachments/assets/086a1790-fde5-4f12-984e-562aa2cead20)" controls="controls" muted="muted" autoplay="autoplay" width="100%"></video>
+<video src="https://github.com/user-attachments/assets/086a1790-fde5-4f12-984e-562aa2cead20" controls="controls" muted="muted" autoplay="autoplay" loop="loop"  width="100%"></video>
 
 *Leveraging highly parallel GPU architecture and shared memory optimization allows for the real-time simulation of 10,000+ particles at 60 FPS.*
 
