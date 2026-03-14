@@ -23,7 +23,7 @@ $$\mathbf{r}_i(t+\Delta t)=\mathbf{r}_i(t)+\mathbf{v}_i(t+\Delta t)\Delta t$$
 
 ## Real-Time Interactive Demo
 
-![Vulkan Gravity Simulator Demo](media/grav_sim.gif)
+<video src="media/grav_sim.mp4" controls="controls" muted="muted" autoplay="autoplay" width="100%"></video>
 
 *Leveraging highly parallel GPU architecture and shared memory optimization allows for the real-time simulation of 10,000+ particles at 60 FPS.*
 
